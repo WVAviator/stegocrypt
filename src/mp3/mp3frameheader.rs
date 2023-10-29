@@ -1,13 +1,8 @@
-const FRAME_SYNC: u32 = 0b11111111_11100000_00000000_00000000;
+use self::mpegversion::MPEGVersion;
 
-const MPEG_VERSION_ID: u32 = 0b00000000_00011000_00000000_00000000;
-const MPEG_VERSION_ID_OFFSET: u32 = 19;
-const MPEG_VERSION_TABLE: [MPEGVersion; 4] = [
-    MPEGVersion::Version2_5,
-    MPEGVersion::VersionReserved,
-    MPEGVersion::Version1,
-    MPEGVersion::Version2,
-];
+mod mpegversion;
+
+const FRAME_SYNC: u32 = 0b11111111_11100000_00000000_00000000;
 
 const LAYER: u32 = 0b00000000_00000110_00000000_00000000;
 const LAYER_OFFSET: u32 = 17;
@@ -99,7 +94,6 @@ impl MP3FrameHeader {
             return Err(MP3HeaderParseError::InvalidHeader);
         }
 
-        let mpeg_version_id = (raw_header & MPEG_VERSION_ID) >> MPEG_VERSION_ID_OFFSET;
         let layer = (raw_header & LAYER) >> LAYER_OFFSET;
         let crc_protection = (raw_header & CRC_PROTECTION) >> CRC_PROTECTION_OFFSET;
         let bitrate_index = (raw_header & BITRATE_INDEX) >> BITRATE_INDEX_OFFSET;
@@ -112,7 +106,7 @@ impl MP3FrameHeader {
         let original = (raw_header & ORIGINAL) >> ORIGINAL_OFFSET;
         let emphasis = (raw_header & EMPHASIS) >> EMPHASIS_OFFSET;
 
-        let version = MPEG_VERSION_TABLE[mpeg_version_id as usize];
+        let version = MPEGVersion::parse(raw_header);
         let layer = LAYER_TABLE[layer as usize];
         let crc_protection = CRC_PROTECTION_TABLE[crc_protection as usize];
         let bitrate = BITRATE_TABLE[bitrate_index as usize];
@@ -165,15 +159,6 @@ pub enum MP3Layer {
     Layer2,
     Layer3,
     LayerReserved,
-}
-
-#[derive(Copy, Clone)]
-
-pub enum MPEGVersion {
-    Version1,
-    Version2,
-    Version2_5,
-    VersionReserved,
 }
 
 #[derive(Copy, Clone)]
