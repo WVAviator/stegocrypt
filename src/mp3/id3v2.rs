@@ -9,6 +9,7 @@ impl ID3v2 {
     pub fn parse(data: Vec<u8>) -> Result<ID3v2, ID3v2ParseError> {
         let identifier = String::from_utf8(data[0..3].to_vec()).unwrap();
         if identifier != "ID3" {
+            println!("ID3v2 tag did is missing ID3 identifier.");
             return Err(ID3v2ParseError::InvalidHeader);
         }
 
@@ -20,14 +21,24 @@ impl ID3v2 {
         let mut size = 0;
         for i in 0..4 {
             size <<= 7;
-            size |= (data[6 + i] & 0x7F) as u32;
+            size |= (data[6 + i]) as u32;
         }
+        size += 10;
 
         let mut frames = Vec::new();
         let mut current_index = 10;
+
+        println!("ID3v2 Metdata:");
         while current_index < size as usize {
             let frame = ID3v2Frame::parse(data[current_index..].to_vec());
             current_index += frame.size as usize;
+
+            println!(
+                " - {:?}: {}",
+                frame.id,
+                String::from_utf8(frame.data.clone()).unwrap(),
+            );
+
             frames.push(frame);
         }
 
@@ -62,7 +73,7 @@ impl ID3v2Frame {
         let id = FrameIdentifier::parse(data[0..4].to_vec());
         let size = u32::from_be_bytes([data[4], data[5], data[6], data[7]]) + 10;
         let flags = u16::from_be_bytes([data[8], data[9]]);
-        let data = data[10..].to_vec();
+        let data = data[10..size as usize].to_vec();
 
         ID3v2Frame {
             id,
@@ -73,6 +84,7 @@ impl ID3v2Frame {
     }
 }
 
+#[derive(Debug)]
 pub enum FrameIdentifier {
     TrackNumber,
     EncodedBy,
@@ -91,7 +103,7 @@ pub enum FrameIdentifier {
 
 impl FrameIdentifier {
     pub fn parse(bytes: Vec<u8>) -> FrameIdentifier {
-        let id = String::from_utf8(bytes[0..3].to_vec()).unwrap();
+        let id = String::from_utf8(bytes[0..4].to_vec()).unwrap();
         match id.as_str() {
             "TRCK" => FrameIdentifier::TrackNumber,
             "TENC" => FrameIdentifier::EncodedBy,
