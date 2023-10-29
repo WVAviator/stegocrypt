@@ -1,10 +1,10 @@
 use self::{
     id3v2::ID3v2,
-    mp3header::{MP3Header, MP3HeaderParseError},
+    mp3frameheader::{MP3FrameHeader, MP3HeaderParseError},
 };
 
 mod id3v2;
-mod mp3header;
+mod mp3frameheader;
 
 pub struct MP3 {
     pub id3v2: Option<ID3v2>,
@@ -13,13 +13,13 @@ pub struct MP3 {
 }
 
 pub struct MP3Frame {
-    pub header: MP3Header,
+    pub header: MP3FrameHeader,
     pub data: Vec<u8>,
 }
 
 impl MP3Frame {
     pub fn parse(data: Vec<u8>) -> Result<MP3Frame, MP3HeaderParseError> {
-        let header = MP3Header::parse(data[0..4].to_vec())?;
+        let header = MP3FrameHeader::parse(data[0..4].to_vec())?;
         let data = data[4..header.frame_length() as usize].to_vec();
 
         Ok(MP3Frame { header, data })

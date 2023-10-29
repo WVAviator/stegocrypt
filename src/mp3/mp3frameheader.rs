@@ -74,7 +74,7 @@ const EMPHASIS_TABLE: [MP3Emphasis; 4] = [
     MP3Emphasis::CCITJ17,
 ];
 
-pub struct MP3Header {
+pub struct MP3FrameHeader {
     pub raw_header: u32,
     pub version: MPEGVersion,
     pub layer: MP3Layer,
@@ -90,8 +90,8 @@ pub struct MP3Header {
     pub emphasis: MP3Emphasis,
 }
 
-impl MP3Header {
-    pub fn parse(data: Vec<u8>) -> Result<MP3Header, MP3HeaderParseError> {
+impl MP3FrameHeader {
+    pub fn parse(data: Vec<u8>) -> Result<MP3FrameHeader, MP3HeaderParseError> {
         let raw_header = u32::from_be_bytes([data[0], data[1], data[2], data[3]]);
 
         // Verify that the first three bytes are 0xFFF (MP3 Sync Word) or throw an error
@@ -124,7 +124,7 @@ impl MP3Header {
         let original = ORIGINAL_TABLE[original as usize];
         let emphasis = EMPHASIS_TABLE[emphasis as usize];
 
-        Ok(MP3Header {
+        Ok(MP3FrameHeader {
             raw_header,
             version,
             layer,
