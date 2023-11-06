@@ -1,17 +1,10 @@
+use self::mpeglayer::MPEGLayer;
 use self::mpegversion::MPEGVersion;
 
+mod mpeglayer;
 mod mpegversion;
 
 const FRAME_SYNC: u32 = 0b11111111_11100000_00000000_00000000;
-
-const LAYER: u32 = 0b00000000_00000110_00000000_00000000;
-const LAYER_OFFSET: u32 = 17;
-const LAYER_TABLE: [MP3Layer; 4] = [
-    MP3Layer::LayerReserved,
-    MP3Layer::Layer3,
-    MP3Layer::Layer2,
-    MP3Layer::Layer1,
-];
 
 const CRC_PROTECTION: u32 = 0b00000000_00000001_00000000_00000000;
 const CRC_PROTECTION_OFFSET: u32 = 16;
@@ -72,7 +65,7 @@ const EMPHASIS_TABLE: [MP3Emphasis; 4] = [
 pub struct MP3FrameHeader {
     pub raw_header: u32,
     pub version: MPEGVersion,
-    pub layer: MP3Layer,
+    pub layer: MPEGLayer,
     pub crc_protection: CRCProtection,
     pub bitrate: u32,
     pub sample_rate: u32,
@@ -94,7 +87,6 @@ impl MP3FrameHeader {
             return Err(MP3HeaderParseError::InvalidHeader);
         }
 
-        let layer = (raw_header & LAYER) >> LAYER_OFFSET;
         let crc_protection = (raw_header & CRC_PROTECTION) >> CRC_PROTECTION_OFFSET;
         let bitrate_index = (raw_header & BITRATE_INDEX) >> BITRATE_INDEX_OFFSET;
         let sample_rate_index = (raw_header & SAMPLE_RATE_INDEX) >> SAMPLE_RATE_INDEX_OFFSET;
@@ -107,7 +99,7 @@ impl MP3FrameHeader {
         let emphasis = (raw_header & EMPHASIS) >> EMPHASIS_OFFSET;
 
         let version = MPEGVersion::parse(raw_header);
-        let layer = LAYER_TABLE[layer as usize];
+        let layer = MPEGLayer::parse(raw_header);
         let crc_protection = CRC_PROTECTION_TABLE[crc_protection as usize];
         let bitrate = BITRATE_TABLE[bitrate_index as usize];
         let sample_rate = SAMPLE_RATE_TABLE[sample_rate_index as usize];
@@ -151,14 +143,6 @@ impl MP3FrameHeader {
 #[derive(Debug)]
 pub enum MP3HeaderParseError {
     InvalidHeader,
-}
-
-#[derive(Copy, Clone)]
-pub enum MP3Layer {
-    Layer1,
-    Layer2,
-    Layer3,
-    LayerReserved,
 }
 
 #[derive(Copy, Clone)]
