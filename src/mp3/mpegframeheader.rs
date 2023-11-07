@@ -1,16 +1,14 @@
+use self::crcprotection::CRCProtection;
 use self::mpegframesync::MPEGFrameSync;
 use self::mpeglayer::MPEGLayer;
 use self::mpegversion::MPEGVersion;
 
 use super::mpegparserror::MPEGParseError;
 
+mod crcprotection;
 mod mpegframesync;
 mod mpeglayer;
 mod mpegversion;
-
-const CRC_PROTECTION: u32 = 0b00000000_00000001_00000000_00000000;
-const CRC_PROTECTION_OFFSET: u32 = 16;
-const CRC_PROTECTION_TABLE: [CRCProtection; 2] = [CRCProtection::Disabled, CRCProtection::Enabled];
 
 const BITRATE_INDEX: u32 = 0b00000000_00000000_11110000_00000000;
 const BITRATE_INDEX_OFFSET: u32 = 12;
@@ -88,8 +86,8 @@ impl MPEGFrameHeader {
         let frame_sync = MPEGFrameSync::parse(raw_header)?;
         let version = MPEGVersion::parse(raw_header)?;
         let layer = MPEGLayer::parse(raw_header)?;
+        let crc_protection = CRCProtection::parse(raw_header, &data)?;
 
-        let crc_protection = (raw_header & CRC_PROTECTION) >> CRC_PROTECTION_OFFSET;
         let bitrate_index = (raw_header & BITRATE_INDEX) >> BITRATE_INDEX_OFFSET;
         let sample_rate_index = (raw_header & SAMPLE_RATE_INDEX) >> SAMPLE_RATE_INDEX_OFFSET;
         let padding = (raw_header & PADDING) >> PADDING_OFFSET;
@@ -100,7 +98,6 @@ impl MPEGFrameHeader {
         let original = (raw_header & ORIGINAL) >> ORIGINAL_OFFSET;
         let emphasis = (raw_header & EMPHASIS) >> EMPHASIS_OFFSET;
 
-        let crc_protection = CRC_PROTECTION_TABLE[crc_protection as usize];
         let bitrate = BITRATE_TABLE[bitrate_index as usize];
         let sample_rate = SAMPLE_RATE_TABLE[sample_rate_index as usize];
         let padding = PADDING_TABLE[padding as usize];
@@ -130,22 +127,20 @@ impl MPEGFrameHeader {
 
     pub fn frame_length(&self) -> u32 {
         // Formula for counting frame length in Bytes:
-        // FrameLen = int((144 * BitRate / SampleRate ) + Padding);
+        // FrameLen = int((144 * BitRate / SampleRate ) + Padding + CRC);
 
         let padding = match self.padding {
             Padding::Enabled => 1,
             Padding::Disabled => 0,
         };
 
-        ((144 * self.bitrate * 1000) / self.sample_rate) + padding
+        let crc_checksum = match self.crc_protection {
+            CRCProtection::Enabled { checksum } => 2,
+            CRCProtection::Disabled => 0,
+        };
+
+        ((144 * self.bitrate * 1000) / self.sample_rate) + padding + crc_checksum
     }
-}
-
-#[derive(Copy, Clone)]
-
-pub enum CRCProtection {
-    Enabled,
-    Disabled,
 }
 
 #[derive(Copy, Clone)]
