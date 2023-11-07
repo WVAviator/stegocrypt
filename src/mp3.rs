@@ -1,7 +1,7 @@
-use self::{id3v2::ID3v2, mp3frameheader::MP3FrameHeader, mpegparserror::MPEGParseError};
+use self::{id3v2::ID3v2, mpegframeheader::MPEGFrameHeader, mpegparserror::MPEGParseError};
 
 mod id3v2;
-mod mp3frameheader;
+mod mpegframeheader;
 mod mpegparserror;
 
 pub struct MP3 {
@@ -11,13 +11,13 @@ pub struct MP3 {
 }
 
 pub struct MP3Frame {
-    pub header: MP3FrameHeader,
+    pub header: MPEGFrameHeader,
     pub data: Vec<u8>,
 }
 
 impl MP3Frame {
     pub fn parse(data: Vec<u8>) -> Result<MP3Frame, MPEGParseError> {
-        let header = MP3FrameHeader::parse(data[0..4].to_vec())?;
+        let header = MPEGFrameHeader::parse(data[0..4].to_vec())?;
         let data = data[4..header.frame_length() as usize].to_vec();
 
         Ok(MP3Frame { header, data })

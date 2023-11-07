@@ -8,8 +8,6 @@ mod mpegframesync;
 mod mpeglayer;
 mod mpegversion;
 
-const FRAME_SYNC: u32 = 0b11111111_11100000_00000000_00000000;
-
 const CRC_PROTECTION: u32 = 0b00000000_00000001_00000000_00000000;
 const CRC_PROTECTION_OFFSET: u32 = 16;
 const CRC_PROTECTION_TABLE: [CRCProtection; 2] = [CRCProtection::Disabled, CRCProtection::Enabled];
@@ -66,7 +64,7 @@ const EMPHASIS_TABLE: [MP3Emphasis; 4] = [
     MP3Emphasis::CCITJ17,
 ];
 
-pub struct MP3FrameHeader {
+pub struct MPEGFrameHeader {
     pub raw_header: u32,
     pub frame_sync: MPEGFrameSync,
     pub version: MPEGVersion,
@@ -83,8 +81,8 @@ pub struct MP3FrameHeader {
     pub emphasis: MP3Emphasis,
 }
 
-impl MP3FrameHeader {
-    pub fn parse(data: Vec<u8>) -> Result<MP3FrameHeader, MPEGParseError> {
+impl MPEGFrameHeader {
+    pub fn parse(data: Vec<u8>) -> Result<MPEGFrameHeader, MPEGParseError> {
         let raw_header = u32::from_be_bytes([data[0], data[1], data[2], data[3]]);
 
         let frame_sync = MPEGFrameSync::parse(raw_header)?;
@@ -112,7 +110,7 @@ impl MP3FrameHeader {
         let original = ORIGINAL_TABLE[original as usize];
         let emphasis = EMPHASIS_TABLE[emphasis as usize];
 
-        Ok(MP3FrameHeader {
+        Ok(MPEGFrameHeader {
             raw_header,
             frame_sync,
             version,
