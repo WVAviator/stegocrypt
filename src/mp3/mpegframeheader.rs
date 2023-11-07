@@ -1,4 +1,5 @@
 use self::crcprotection::CRCProtection;
+use self::framepadding::FramePadding;
 use self::mpegframesync::MPEGFrameSync;
 use self::mpeglayer::MPEGLayer;
 use self::mpegversion::MPEGVersion;
@@ -6,6 +7,7 @@ use self::mpegversion::MPEGVersion;
 use super::mpegparserror::MPEGParseError;
 
 mod crcprotection;
+mod framepadding;
 mod mpegframesync;
 mod mpeglayer;
 mod mpegversion;
@@ -19,10 +21,6 @@ const BITRATE_TABLE: [u32; 16] = [
 const SAMPLE_RATE_INDEX: u32 = 0b00000000_00000000_00001100_00000000;
 const SAMPLE_RATE_INDEX_OFFSET: u32 = 10;
 const SAMPLE_RATE_TABLE: [u32; 4] = [44100, 48000, 32000, 0];
-
-const PADDING: u32 = 0b00000000_00000000_00000010_00000000;
-const PADDING_OFFSET: u32 = 9;
-const PADDING_TABLE: [Padding; 2] = [Padding::Disabled, Padding::Enabled];
 
 const PRIVATE_BIT: u32 = 0b00000000_00000000_00000001_00000000;
 const PRIVATE_BIT_OFFSET: u32 = 8;
@@ -70,7 +68,7 @@ pub struct MPEGFrameHeader {
     pub crc_protection: CRCProtection,
     pub bitrate: u32,
     pub sample_rate: u32,
-    pub padding: Padding,
+    pub padding: FramePadding,
     pub private_bit: bool,
     pub channel_mode: MP3ChannelMode,
     pub mode_extension: MP3ModeExtension,
@@ -87,10 +85,10 @@ impl MPEGFrameHeader {
         let version = MPEGVersion::parse(raw_header)?;
         let layer = MPEGLayer::parse(raw_header)?;
         let crc_protection = CRCProtection::parse(raw_header, &data)?;
+        let padding = FramePadding::parse(raw_header)?;
 
         let bitrate_index = (raw_header & BITRATE_INDEX) >> BITRATE_INDEX_OFFSET;
         let sample_rate_index = (raw_header & SAMPLE_RATE_INDEX) >> SAMPLE_RATE_INDEX_OFFSET;
-        let padding = (raw_header & PADDING) >> PADDING_OFFSET;
         let private_bit = (raw_header & PRIVATE_BIT) >> PRIVATE_BIT_OFFSET;
         let channel_mode = (raw_header & CHANNEL_MODE) >> CHANNEL_MODE_OFFSET;
         let mode_extension = (raw_header & MODE_EXTENSION) >> MODE_EXTENSION_OFFSET;
@@ -100,7 +98,6 @@ impl MPEGFrameHeader {
 
         let bitrate = BITRATE_TABLE[bitrate_index as usize];
         let sample_rate = SAMPLE_RATE_TABLE[sample_rate_index as usize];
-        let padding = PADDING_TABLE[padding as usize];
         let channel_mode = CHANNEL_MODE_TABLE[channel_mode as usize];
         let mode_extension = MODE_EXTENSION_TABLE[mode_extension as usize];
         let copyright = COPYRIGHT_TABLE[copyright as usize];
@@ -130,8 +127,8 @@ impl MPEGFrameHeader {
         // FrameLen = int((144 * BitRate / SampleRate ) + Padding + CRC);
 
         let padding = match self.padding {
-            Padding::Enabled => 1,
-            Padding::Disabled => 0,
+            FramePadding::Enabled => 1,
+            FramePadding::Disabled => 0,
         };
 
         let crc_checksum = match self.crc_protection {
@@ -141,13 +138,6 @@ impl MPEGFrameHeader {
 
         ((144 * self.bitrate * 1000) / self.sample_rate) + padding + crc_checksum
     }
-}
-
-#[derive(Copy, Clone)]
-
-pub enum Padding {
-    Enabled,
-    Disabled,
 }
 
 #[derive(Copy, Clone)]
