@@ -4,7 +4,7 @@ const LAYER_MASK: u32 = 0b00000000_00000110_00000000_00000000;
 const LAYER_MASK_OFFSET: u32 = 17;
 
 /// The MPEG Layer of the file. Most files will be Layer 3 (hence the designation "MP3").
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum MPEGLayer {
     Reserved,
     Layer3,
@@ -39,5 +39,24 @@ impl MPEGLayer {
                 MPEGLayer::Layer2 => 0b00000000_00000100_00000000_00000000,
                 MPEGLayer::Layer1 => 0b00000000_00000110_00000000_00000000,
             }
+    }
+}
+
+mod test {
+    use super::*;
+
+    #[test]
+    fn parses_mpeg_layer_3() {
+        let header = 0b00000000_00000010_00000000_00000000;
+        let result = MPEGLayer::parse(header);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), MPEGLayer::Layer3);
+    }
+
+    #[test]
+    fn applies_mpeg_layer_3() {
+        let header = 0b00000000_00000000_00000000_00000000;
+        let result = MPEGLayer::Layer3.apply(header);
+        assert_eq!(result, 0b00000000_00000010_00000000_00000000);
     }
 }

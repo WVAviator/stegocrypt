@@ -4,7 +4,7 @@ const MPEG_VERSION_ID_MASK: u32 = 0b00000000_00011000_00000000_00000000;
 const MPEG_VERSION_ID_MASK_OFFSET: u32 = 19;
 
 /// The MPEG Version of the file. Most files will be MPEG Version 1.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum MPEGVersion {
     Version1,
     Version2,
@@ -39,5 +39,24 @@ impl MPEGVersion {
                 MPEGVersion::Version2_5 => 0b00000000_00000000_00000000_00000000,
                 MPEGVersion::VersionReserved => 0b00000000_00001000_00000000_00000000,
             }
+    }
+}
+
+mod test {
+    use super::*;
+
+    #[test]
+    fn parses_mpeg_version_1() {
+        let header = 0b00000000_00011000_00000000_00000000;
+        let result = MPEGVersion::parse(header);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), MPEGVersion::Version1);
+    }
+
+    #[test]
+    fn applies_mpeg_version_1() {
+        let header = 0b00000000_00000000_00000000_00000000;
+        let result = MPEGVersion::Version1.apply(header);
+        assert_eq!(result, 0b00000000_00011000_00000000_00000000);
     }
 }

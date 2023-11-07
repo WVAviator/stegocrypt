@@ -1,5 +1,5 @@
 /// Error type for MPEG parsing.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum MPEGParseError {
     NoFrameSync,
     GenericInvalidFrameHeader { info: String },

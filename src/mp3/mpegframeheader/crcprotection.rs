@@ -6,6 +6,7 @@ const CRC_PROTECTION_MASK_OFFSET: u32 = 16;
 /// An enum that represents the CRC protection of the frame.
 /// If CRC protection is enabled, a 16-bit CRC checksum is appended to the end of the frame.
 /// Most files will have CRC protection disabled.
+#[derive(Debug, PartialEq)]
 pub enum CRCProtection {
     Disabled,
     Enabled { checksum: u16 },
@@ -40,5 +41,57 @@ impl CRCProtection {
                     0b00000000_00000000_00000000_00000000
                 }
             }
+    }
+}
+
+mod test {
+    use super::*;
+
+    #[test]
+    fn parses_disabled_crc_protection() {
+        let header = 0b00000000_00000001_00000000_00000000;
+        let data = vec![0; 10];
+        let result = CRCProtection::parse(header, &data);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), CRCProtection::Disabled);
+    }
+
+    #[test]
+    fn parses_enabled_crc_protection() {
+        let header = 0b00000000_00000000_00000000_00000000;
+        let mut data = vec![0; 10];
+        data[8] = 0b10000000;
+        data[9] = 0b00000001;
+        let result = CRCProtection::parse(header, &data);
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            CRCProtection::Enabled {
+                checksum: 0b10000000_00000001
+            }
+        );
+    }
+
+    #[test]
+    fn applies_disabled_crc_protection() {
+        let header = 0b00000000_00000000_00000000_00000000;
+        let mut data = vec![0; 10];
+        let result = CRCProtection::Disabled.apply(header, &mut data);
+        assert_eq!(result, 0b00000000_00000001_00000000_00000000);
+    }
+
+    #[test]
+    fn applies_enabled_crc_protection() {
+        let header = 0b00000000_00000000_00000000_00000000;
+        let mut data = vec![0; 10];
+        data[8] = 0b00000000;
+        data[9] = 0b00000000;
+        let result = CRCProtection::Enabled {
+            checksum: 0b10000000_00000001,
+        }
+        .apply(header, &mut data);
+        assert_eq!(result, 0b00000000_00000000_00000000_00000000);
+        assert_eq!(data[8], 0b10000000);
+        assert_eq!(data[9], 0b00000001);
     }
 }
