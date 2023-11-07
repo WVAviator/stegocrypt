@@ -12,7 +12,12 @@ fn main() {
 
     let path = Path::new(input);
     let raw_mp3_bytes = std::fs::read(path).unwrap();
-    let mp3 = mp3::MP3::parse(raw_mp3_bytes);
+    let mp3 = mp3::MP3::parse(raw_mp3_bytes).unwrap_or_else(|err| {
+        panic!(
+            "Encountered error while parsing MP3 file.\n{}",
+            err.description()
+        )
+    });
 
     println!("Frames: {}", mp3.frames.len());
 }

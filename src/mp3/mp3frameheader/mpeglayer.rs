@@ -1,3 +1,5 @@
+use crate::mp3::mpegparserror::MPEGParseError;
+
 const LAYER_MASK: u32 = 0b00000000_00000110_00000000_00000000;
 const LAYER_MASK_OFFSET: u32 = 17;
 
@@ -13,14 +15,16 @@ pub enum MPEGLayer {
 impl MPEGLayer {
     /// Given a 32-bit frame header, parse the MPEG layer.
     /// The layer ID is extracted from bits 17 and 18 and then mapped to the appropriate MPEGLayer enum.
-    pub fn parse(data: u32) -> MPEGLayer {
+    pub fn parse(data: u32) -> Result<MPEGLayer, MPEGParseError> {
         let layer_id = (data & LAYER_MASK) >> LAYER_MASK_OFFSET;
         match layer_id {
-            0b00 => MPEGLayer::Reserved,
-            0b01 => MPEGLayer::Layer3,
-            0b10 => MPEGLayer::Layer2,
-            0b11 => MPEGLayer::Layer1,
-            _ => panic!("Invalid MPEG layer ID"),
+            0b00 => Ok(MPEGLayer::Reserved),
+            0b01 => Ok(MPEGLayer::Layer3),
+            0b10 => Ok(MPEGLayer::Layer2),
+            0b11 => Ok(MPEGLayer::Layer1),
+            _ => Err(MPEGParseError::GenericInvalidFrameHeader {
+                info: format!("Invalid MPEG layer ID: {}", layer_id),
+            }),
         }
     }
 

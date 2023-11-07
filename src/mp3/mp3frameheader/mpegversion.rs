@@ -1,3 +1,5 @@
+use crate::mp3::mpegparserror::MPEGParseError;
+
 const MPEG_VERSION_ID_MASK: u32 = 0b00000000_00011000_00000000_00000000;
 const MPEG_VERSION_ID_MASK_OFFSET: u32 = 19;
 
@@ -13,14 +15,16 @@ pub enum MPEGVersion {
 impl MPEGVersion {
     /// Given a 32-bit frame header, parse the MPEG version.
     /// The version ID is extracted from bits 19 and 20 and then mapped to the appropriate MPEGVersion enum.
-    pub fn parse(data: u32) -> MPEGVersion {
+    pub fn parse(data: u32) -> Result<MPEGVersion, MPEGParseError> {
         let version_id = (data & MPEG_VERSION_ID_MASK) >> MPEG_VERSION_ID_MASK_OFFSET;
         match version_id {
-            0b00 => MPEGVersion::Version2_5,
-            0b01 => MPEGVersion::VersionReserved,
-            0b10 => MPEGVersion::Version2,
-            0b11 => MPEGVersion::Version1,
-            _ => panic!("Invalid MPEG version ID"),
+            0b00 => Ok(MPEGVersion::Version2_5),
+            0b01 => Ok(MPEGVersion::VersionReserved),
+            0b10 => Ok(MPEGVersion::Version2),
+            0b11 => Ok(MPEGVersion::Version1),
+            _ => Err(MPEGParseError::GenericInvalidFrameHeader {
+                info: format!("Invalid MPEG version ID: {}", version_id),
+            }),
         }
     }
 

@@ -1,6 +1,10 @@
+use self::mpegframesync::MPEGFrameSync;
 use self::mpeglayer::MPEGLayer;
 use self::mpegversion::MPEGVersion;
 
+use super::mpegparserror::MPEGParseError;
+
+mod mpegframesync;
 mod mpeglayer;
 mod mpegversion;
 
@@ -64,6 +68,7 @@ const EMPHASIS_TABLE: [MP3Emphasis; 4] = [
 
 pub struct MP3FrameHeader {
     pub raw_header: u32,
+    pub frame_sync: MPEGFrameSync,
     pub version: MPEGVersion,
     pub layer: MPEGLayer,
     pub crc_protection: CRCProtection,
@@ -79,13 +84,12 @@ pub struct MP3FrameHeader {
 }
 
 impl MP3FrameHeader {
-    pub fn parse(data: Vec<u8>) -> Result<MP3FrameHeader, MP3HeaderParseError> {
+    pub fn parse(data: Vec<u8>) -> Result<MP3FrameHeader, MPEGParseError> {
         let raw_header = u32::from_be_bytes([data[0], data[1], data[2], data[3]]);
 
-        // Verify that the first three bytes are 0xFFF (MP3 Sync Word) or throw an error
-        if ((raw_header & FRAME_SYNC) != FRAME_SYNC) {
-            return Err(MP3HeaderParseError::InvalidHeader);
-        }
+        let frame_sync = MPEGFrameSync::parse(raw_header)?;
+        let version = MPEGVersion::parse(raw_header)?;
+        let layer = MPEGLayer::parse(raw_header)?;
 
         let crc_protection = (raw_header & CRC_PROTECTION) >> CRC_PROTECTION_OFFSET;
         let bitrate_index = (raw_header & BITRATE_INDEX) >> BITRATE_INDEX_OFFSET;
@@ -98,8 +102,6 @@ impl MP3FrameHeader {
         let original = (raw_header & ORIGINAL) >> ORIGINAL_OFFSET;
         let emphasis = (raw_header & EMPHASIS) >> EMPHASIS_OFFSET;
 
-        let version = MPEGVersion::parse(raw_header);
-        let layer = MPEGLayer::parse(raw_header);
         let crc_protection = CRC_PROTECTION_TABLE[crc_protection as usize];
         let bitrate = BITRATE_TABLE[bitrate_index as usize];
         let sample_rate = SAMPLE_RATE_TABLE[sample_rate_index as usize];
@@ -112,6 +114,7 @@ impl MP3FrameHeader {
 
         Ok(MP3FrameHeader {
             raw_header,
+            frame_sync,
             version,
             layer,
             crc_protection,
@@ -138,11 +141,6 @@ impl MP3FrameHeader {
 
         ((144 * self.bitrate * 1000) / self.sample_rate) + padding
     }
-}
-
-#[derive(Debug)]
-pub enum MP3HeaderParseError {
-    InvalidHeader,
 }
 
 #[derive(Copy, Clone)]

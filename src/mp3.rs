@@ -1,10 +1,8 @@
-use self::{
-    id3v2::ID3v2,
-    mp3frameheader::{MP3FrameHeader, MP3HeaderParseError},
-};
+use self::{id3v2::ID3v2, mp3frameheader::MP3FrameHeader, mpegparserror::MPEGParseError};
 
 mod id3v2;
 mod mp3frameheader;
+mod mpegparserror;
 
 pub struct MP3 {
     pub id3v2: Option<ID3v2>,
@@ -18,7 +16,7 @@ pub struct MP3Frame {
 }
 
 impl MP3Frame {
-    pub fn parse(data: Vec<u8>) -> Result<MP3Frame, MP3HeaderParseError> {
+    pub fn parse(data: Vec<u8>) -> Result<MP3Frame, MPEGParseError> {
         let header = MP3FrameHeader::parse(data[0..4].to_vec())?;
         let data = data[4..header.frame_length() as usize].to_vec();
 
@@ -27,7 +25,7 @@ impl MP3Frame {
 }
 
 impl MP3 {
-    pub fn parse(data: Vec<u8>) -> MP3 {
+    pub fn parse(data: Vec<u8>) -> Result<MP3, MPEGParseError> {
         let id3v2 = if ID3v2::has_id3v2_tag(data.clone()) {
             Some(ID3v2::parse(data.clone()).unwrap())
         } else {
@@ -48,20 +46,15 @@ impl MP3 {
         }
 
         while current_index < data.len() {
-            let parsed_frame = MP3Frame::parse(data[current_index..].to_vec());
-            if let Ok(frame) = parsed_frame {
-                current_index += frame.header.frame_length() as usize;
-                frames.push(frame);
-            } else {
-                println!("Failed to parse frame at index {}", current_index);
-                current_index += 1;
-            }
+            let parsed_frame = MP3Frame::parse(data[current_index..].to_vec())?;
+            current_index += parsed_frame.header.frame_length() as usize;
+            frames.push(parsed_frame);
         }
 
-        MP3 {
+        Ok(MP3 {
             id3v2,
             // id3v1,
             frames,
-        }
+        })
     }
 }
