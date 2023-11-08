@@ -1,3 +1,4 @@
+use self::copyright::Copyright;
 use self::crcprotection::CRCProtection;
 use self::framepadding::FramePadding;
 use self::mpegframesync::MPEGFrameSync;
@@ -6,6 +7,7 @@ use self::mpegversion::MPEGVersion;
 
 use super::mpegparserror::MPEGParseError;
 
+mod copyright;
 mod crcprotection;
 mod framepadding;
 mod mpegframesync;
@@ -42,10 +44,6 @@ const MODE_EXTENSION_TABLE: [MP3ModeExtension; 4] = [
     MP3ModeExtension::Bands12To31,
     MP3ModeExtension::Bands16To31,
 ];
-
-const COPYRIGHT: u32 = 0b00000000_00000000_00000000_00001000;
-const COPYRIGHT_OFFSET: u32 = 3;
-const COPYRIGHT_TABLE: [Copyright; 2] = [Copyright::CopyPermitted, Copyright::CopyPermitted];
 
 const ORIGINAL: u32 = 0b00000000_00000000_00000000_00000100;
 const ORIGINAL_OFFSET: u32 = 2;
@@ -86,13 +84,13 @@ impl MPEGFrameHeader {
         let layer = MPEGLayer::parse(raw_header)?;
         let crc_protection = CRCProtection::parse(raw_header, &data)?;
         let padding = FramePadding::parse(raw_header)?;
+        let copyright = Copyright::parse(raw_header)?;
 
         let bitrate_index = (raw_header & BITRATE_INDEX) >> BITRATE_INDEX_OFFSET;
         let sample_rate_index = (raw_header & SAMPLE_RATE_INDEX) >> SAMPLE_RATE_INDEX_OFFSET;
         let private_bit = (raw_header & PRIVATE_BIT) >> PRIVATE_BIT_OFFSET;
         let channel_mode = (raw_header & CHANNEL_MODE) >> CHANNEL_MODE_OFFSET;
         let mode_extension = (raw_header & MODE_EXTENSION) >> MODE_EXTENSION_OFFSET;
-        let copyright = (raw_header & COPYRIGHT) >> COPYRIGHT_OFFSET;
         let original = (raw_header & ORIGINAL) >> ORIGINAL_OFFSET;
         let emphasis = (raw_header & EMPHASIS) >> EMPHASIS_OFFSET;
 
@@ -100,7 +98,6 @@ impl MPEGFrameHeader {
         let sample_rate = SAMPLE_RATE_TABLE[sample_rate_index as usize];
         let channel_mode = CHANNEL_MODE_TABLE[channel_mode as usize];
         let mode_extension = MODE_EXTENSION_TABLE[mode_extension as usize];
-        let copyright = COPYRIGHT_TABLE[copyright as usize];
         let original = ORIGINAL_TABLE[original as usize];
         let emphasis = EMPHASIS_TABLE[emphasis as usize];
 
@@ -147,13 +144,6 @@ pub enum MP3ModeExtension {
     Bands8To31,
     Bands12To31,
     Bands16To31,
-}
-
-#[derive(Copy, Clone)]
-
-pub enum Copyright {
-    CopyPermitted,
-    CopyForbidden,
 }
 
 #[derive(Copy, Clone)]
