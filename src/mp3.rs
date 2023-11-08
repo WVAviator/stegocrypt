@@ -17,8 +17,8 @@ pub struct MP3Frame {
 
 impl MP3Frame {
     pub fn parse(data: Vec<u8>) -> Result<MP3Frame, MPEGParseError> {
-        let header = MPEGFrameHeader::parse(data[0..4].to_vec())?;
-        let data = data[4..header.frame_length() as usize].to_vec();
+        let header = MPEGFrameHeader::parse(&data)?;
+        let data = header.frame_data.clone();
 
         Ok(MP3Frame { header, data })
     }
@@ -47,7 +47,7 @@ impl MP3 {
 
         while current_index < data.len() {
             let parsed_frame = MP3Frame::parse(data[current_index..].to_vec())?;
-            current_index += parsed_frame.header.frame_length() as usize;
+            current_index += parsed_frame.header.frame_length as usize;
             frames.push(parsed_frame);
         }
 

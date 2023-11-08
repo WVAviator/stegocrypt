@@ -3,6 +3,7 @@
 pub enum MPEGParseError {
     NoFrameSync,
     GenericInvalidFrameHeader { info: String },
+    BadFrameBitrate,
 }
 
 impl MPEGParseError {
@@ -13,6 +14,9 @@ impl MPEGParseError {
             }
             MPEGParseError::GenericInvalidFrameHeader { info } => {
                 format!("Error parsing MPEG frame: {}", info)
+            }
+            MPEGParseError::BadFrameBitrate => {
+                String::from("Frame header bitrate indicated as bad.")
             }
         }
     }

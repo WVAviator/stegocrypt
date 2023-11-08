@@ -24,6 +24,15 @@ impl MPEGFrameSync {
         let result = header & !FRAME_SYNC_MASK;
         result | FRAME_SYNC_MASK
     }
+
+    pub fn has_frame_sync(data: &[u8]) -> bool {
+        if data.len() < 4 {
+            return false;
+        }
+
+        let header = u32::from_be_bytes([data[0], data[1], data[2], data[3]]);
+        ((header & FRAME_SYNC_MASK) == FRAME_SYNC_MASK)
+    }
 }
 
 mod test {
@@ -43,5 +52,13 @@ mod test {
         let result = MPEGFrameSync::parse(header);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), MPEGParseError::NoFrameSync);
+    }
+
+    #[test]
+    fn correctly_identifies_frame_sync() {
+        let data = vec![0xFF, 0xE0, 0x00, 0x00];
+        assert!(MPEGFrameSync::has_frame_sync(&data));
+        let data = vec![0xFF, 0x00, 0x00, 0x00];
+        assert!(!MPEGFrameSync::has_frame_sync(&data));
     }
 }
