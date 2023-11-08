@@ -80,7 +80,7 @@ impl MPEGFrameHeader {
         let frame_sync = MPEGFrameSync::parse(raw_header)?;
         let version = MPEGVersion::parse(raw_header)?;
         let layer = MPEGLayer::parse(raw_header)?;
-        let crc_protection = CRCProtection::parse(raw_header, &data)?;
+        let mut crc_protection = CRCProtection::parse(raw_header)?;
         let padding = FramePadding::parse(raw_header)?;
         let copyright = Copyright::parse(raw_header)?;
         let bitrate = FrameBitrate::parse(raw_header)?;
@@ -129,6 +129,8 @@ impl MPEGFrameHeader {
         };
 
         let frame_data = data[0..frame_length as usize].to_vec();
+
+        crc_protection.extract_checksum(&frame_data);
 
         Ok(MPEGFrameHeader {
             raw_header,
