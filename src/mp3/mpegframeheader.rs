@@ -5,6 +5,7 @@ use self::framepadding::FramePadding;
 use self::mpegframesync::MPEGFrameSync;
 use self::mpeglayer::MPEGLayer;
 use self::mpegversion::MPEGVersion;
+use self::samplerate::SampleRate;
 
 use super::mpegparserror::MPEGParseError;
 
@@ -15,10 +16,7 @@ mod framepadding;
 mod mpegframesync;
 mod mpeglayer;
 mod mpegversion;
-
-const SAMPLE_RATE_INDEX: u32 = 0b00000000_00000000_00001100_00000000;
-const SAMPLE_RATE_INDEX_OFFSET: u32 = 10;
-const SAMPLE_RATE_TABLE: [u32; 4] = [44100, 48000, 32000, 0];
+mod samplerate;
 
 const PRIVATE_BIT: u32 = 0b00000000_00000000_00000001_00000000;
 const PRIVATE_BIT_OFFSET: u32 = 8;
@@ -63,7 +61,7 @@ pub struct MPEGFrameHeader {
     pub layer: MPEGLayer,
     pub crc_protection: CRCProtection,
     pub bitrate: FrameBitrate,
-    pub sample_rate: u32,
+    pub sample_rate: SampleRate,
     pub padding: FramePadding,
     pub private_bit: bool,
     pub channel_mode: MP3ChannelMode,
@@ -84,31 +82,20 @@ impl MPEGFrameHeader {
         let padding = FramePadding::parse(raw_header)?;
         let copyright = Copyright::parse(raw_header)?;
         let bitrate = FrameBitrate::parse(raw_header)?;
+        let sample_rate = SampleRate::parse(raw_header)?;
 
-        let sample_rate_index = (raw_header & SAMPLE_RATE_INDEX) >> SAMPLE_RATE_INDEX_OFFSET;
         let private_bit = (raw_header & PRIVATE_BIT) >> PRIVATE_BIT_OFFSET;
         let channel_mode = (raw_header & CHANNEL_MODE) >> CHANNEL_MODE_OFFSET;
         let mode_extension = (raw_header & MODE_EXTENSION) >> MODE_EXTENSION_OFFSET;
         let original = (raw_header & ORIGINAL) >> ORIGINAL_OFFSET;
         let emphasis = (raw_header & EMPHASIS) >> EMPHASIS_OFFSET;
 
-        let sample_rate = SAMPLE_RATE_TABLE[sample_rate_index as usize];
         let channel_mode = CHANNEL_MODE_TABLE[channel_mode as usize];
         let mode_extension = MODE_EXTENSION_TABLE[mode_extension as usize];
         let original = ORIGINAL_TABLE[original as usize];
         let emphasis = EMPHASIS_TABLE[emphasis as usize];
 
         let frame_length = {
-            let padding = match padding {
-                FramePadding::Enabled => 1,
-                FramePadding::Disabled => 0,
-            };
-
-            let crc_checksum = match crc_protection {
-                CRCProtection::Enabled { checksum } => 2,
-                CRCProtection::Disabled => 0,
-            };
-
             match bitrate {
                 // If the bitrate is free, we need to search for the next frame sync.
                 // This iterates through the bytes until a valid frame sync is found, marking the frame length.
@@ -123,6 +110,22 @@ impl MPEGFrameHeader {
                     i as u32
                 }
                 FrameBitrate::Bitrate(bitrate) => {
+                    let padding = match padding {
+                        FramePadding::Enabled => 1,
+                        FramePadding::Disabled => 0,
+                    };
+
+                    let sample_rate = match sample_rate {
+                        SampleRate::Hz44100 => 44100,
+                        SampleRate::Hz48000 => 48000,
+                        SampleRate::Hz32000 => 32000,
+                    };
+
+                    let crc_checksum = match crc_protection {
+                        CRCProtection::Enabled { checksum } => 2,
+                        CRCProtection::Disabled => 0,
+                    };
+
                     ((144 * bitrate * 1000) / sample_rate) + padding + crc_checksum
                 }
             }
